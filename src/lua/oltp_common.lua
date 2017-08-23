@@ -228,16 +228,22 @@ CREATE TABLE sbtest%d(
       end
 
       con:bulk_insert_next(query)
+
+      if (i % 100000) == 0 then
+         print(string.format("%d records have already been inserted into 'sbtest%d'",
+                       i, table_num))
+      end
+
    end
 
    con:bulk_insert_done()
 
-   if sysbench.opt.create_secondary then
-      print(string.format("Creating a secondary index on 'sbtest%d'...",
-                          table_num))
-      con:query(string.format("CREATE INDEX k_%d ON sbtest%d(k)",
-                              table_num, table_num))
-   end
+--   if sysbench.opt.create_secondary then
+--      print(string.format("Creating a secondary index on 'sbtest%d'...",
+--                          table_num))
+--      con:query(string.format("CREATE INDEX k_%d ON sbtest%d(k)",
+--                              table_num, table_num))
+--   end
 end
 
 local t = sysbench.sql.type
@@ -263,6 +269,9 @@ local stmt_defs = {
    non_index_updates = {
       "UPDATE sbtest%u SET c=? WHERE id=?",
       {t.CHAR, 120}, t.INT},
+   range_non_index_updates = {
+      "UPDATE sbtest%u SET c=? WHERE id BETWEEN ? AND ?",
+      {t.CHAR, 120}, t.INT, t.INT},
    deletes = {
       "DELETE FROM sbtest%u WHERE id=?",
       t.INT},
@@ -339,9 +348,17 @@ function prepare_non_index_updates()
    prepare_for_each_table("non_index_updates")
 end
 
+function prepare_range_non_index_updates()
+   prepare_for_each_table("range_non_index_updates")
+end
+
 function prepare_delete_inserts()
    prepare_for_each_table("deletes")
    prepare_for_each_table("inserts")
+end
+
+function prepare_delete_only()
+   prepare_for_each_table("deletes")
 end
 
 function thread_init()
@@ -466,6 +483,20 @@ function execute_non_index_updates()
    end
 end
 
+function execute_range_non_index_updates()
+   local tnum = get_table_num()
+
+   for i = 1, sysbench.opt.non_index_updates do
+      local id = get_id()
+      param[tnum].range_non_index_updates[1]:set_rand_str(c_value_template)
+
+      param[tnum].range_non_index_updates[2]:set(id)
+      param[tnum].range_non_index_updates[3]:set(id + sysbench.opt.range_size - 1)
+
+      stmt[tnum].range_non_index_updates:execute()
+   end
+end
+
 function execute_delete_inserts()
    local tnum = get_table_num()
 
@@ -482,5 +513,17 @@ function execute_delete_inserts()
 
       stmt[tnum].deletes:execute()
       stmt[tnum].inserts:execute()
+   end
+end
+
+function execute_delete_only()
+   local tnum = get_table_num()
+
+   for i = 1, sysbench.opt.delete_inserts do
+      local id = get_id()
+
+      param[tnum].deletes[1]:set(id)
+
+      stmt[tnum].deletes:execute()
    end
 end
