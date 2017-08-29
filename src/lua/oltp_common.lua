@@ -36,7 +36,7 @@ sysbench.cmdline.options = {
    range_size =
       {"Range size for range SELECT queries", 100},
    tables =
-      {"Number of tables", 1},
+      {"Number of tables", 2},
    point_selects =
       {"Number of point SELECT queries per transaction", 10},
    simple_ranges =
@@ -73,7 +73,18 @@ sysbench.cmdline.options = {
           "PostgreSQL driver. The only currently supported " ..
           "variant is 'redshift'. When enabled, " ..
           "create_secondary is automatically disabled, and " ..
-          "delete_inserts is set to 0"}
+          "delete_inserts is set to 0"},
+   fops_max_period =
+      {"file-ops(create, drop, rename) max period in seconds " ..
+       "the timeout between file-ops will be random(1, fops_max_period)", 120},
+   fops_threads_num =
+      {"the number of threads for file-ops", 5},
+   toku_hotbackup_dir =
+      {"the directory for hotbackup, there will not be hotbackup " ..
+       "if it is empty ", ""},
+   toku_hotbackup_max_period =
+      {"max period for hotbackup in seconds, the timeout between backups " ..
+       "will be random(1, toku_hotbackup_max_period)", 120}
 }
 
 -- Prepare the dataset. This command supports parallel execution, i.e. will
@@ -484,3 +495,26 @@ function execute_delete_inserts()
       stmt[tnum].inserts:execute()
    end
 end
+
+function execute_fops()
+  local tnum1 = sysbench.rand.uniform(2, sysbench.opt.tables)
+  local tnum2 = sysbench.rand.uniform(2, sysbench.opt.tables)
+  print(string.format("start fops in %d for 'sbtest%d' and 'sbtest%d'",
+        sysbench.tid, tnum1, tnum2))
+  con:query("DROP TABLE sbtest" .. tnum2);
+  con:query("RENAME TABLE sbtest" .. tnum1 .. " TO sbtest" .. tnum2);
+  con:query("CREATE TABLE sbtest".. tnum1 .. " SELECT * FROM sbtest1");
+  print(string.format("finish fops in %d for 'sbtest%d' and 'sbtest%d'",
+        sysbench.tid, tnum1, tnum2))
+end
+
+function execute_hotbackup()
+  print(string.format("start hotbackup in %d for %s",
+    sysbench.tid, sysbench.opt.toku_hotbackup_dir))
+  os.execute("mkdir -p " .. sysbench.opt.toku_hotbackup_dir)
+  os.execute("rm -rf " .. sysbench.opt.toku_hotbackup_dir .. "/*")
+    con:query("set tokudb_backup_dir='" .. sysbench.opt.toku_hotbackup_dir .. "'")
+  print(string.format("finish hotbackup in %d for %s",
+    sysbench.tid, sysbench.opt.toku_hotbackup_dir))
+end
+

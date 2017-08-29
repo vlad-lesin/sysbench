@@ -207,6 +207,8 @@ typedef struct
   int             forced_shutdown_in_progress;
   int             warmup_time;  /* warmup time */
   uint64_t        nevents CK_CC_CACHELINE; /* event counter */
+  unsigned char   break_workers_init; /* break worker's (on) initialization
+                                      by timer or not (off) */
   const char      *luajit_cmd; /* LuaJIT command */
 } sb_globals_t;
 

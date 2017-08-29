@@ -76,6 +76,8 @@ static sb_arg_t mysql_drv_args[] =
          "1213,1020,1205", LIST),
   SB_OPT("mysql-dry-run", "Dry run, pretend that all MySQL client API "
          "calls are successful without executing them", "off", BOOL),
+  SB_OPT("mysql-emulate-prepare", "Don't use server-side PREPARE statement "
+         "emulate it on client-side instead", "off", BOOL),
 
   SB_OPT_END
 };
@@ -94,6 +96,7 @@ typedef struct
   unsigned char      debug;
   sb_list_t          *ignored_errors;
   unsigned int       dry_run;
+  unsigned int       emulate_prepare;
 } mysql_drv_args_t;
 
 typedef struct
@@ -260,6 +263,8 @@ int mysql_drv_init(void)
   args.ignored_errors = sb_get_value_list("mysql-ignore-errors");
 
   args.dry_run = sb_get_value_flag("mysql-dry-run");
+
+  args.emulate_prepare = sb_get_value_flag("mysql-emulate-prepare");
 
   use_ps = 0;
   mysql_drv_caps.prepared_statements = 1;
@@ -491,6 +496,9 @@ int mysql_drv_prepare(db_stmt_t *stmt, const char *query, size_t len)
 
   if (args.dry_run)
     return 0;
+
+  if (args.emulate_prepare)
+    goto emulate;
 
   db_mysql_conn_t *db_mysql_con = (db_mysql_conn_t *) stmt->connection->ptr;
   MYSQL      *con = db_mysql_con->mysql;

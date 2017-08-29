@@ -113,6 +113,7 @@ sb_arg_t general_args[] =
          "checkpoints are off by default.", "", LIST),
   SB_OPT("debug", "print more debugging info", "off", BOOL),
   SB_OPT("validate", "perform validation checks where possible", "off", BOOL),
+  SB_OPT("break-workers-init", "break worker init by timer", "on", BOOL),
   SB_OPT("help", "print help and exit", "off", BOOL),
   SB_OPT("version", "print version and exit", "off", BOOL),
   SB_OPT("config-file", "File containing command line options", NULL, FILE),
@@ -1141,10 +1142,12 @@ static int run_test(sb_test_t *test)
     return err;
 
 #ifdef HAVE_ALARM
-  /* Exit with an error if thread initialization timeout expires */
-  signal(SIGALRM, sigalrm_thread_init_timeout_handler);
+  if (sb_globals.break_workers_init) {
+    /* Exit with an error if thread initialization timeout expires */
+    signal(SIGALRM, sigalrm_thread_init_timeout_handler);
 
-  alarm(thread_init_timeout);
+    alarm(thread_init_timeout);
+  }
 #endif
 
   if (sb_barrier_wait(&worker_barrier) < 0)
@@ -1376,8 +1379,10 @@ static int init(void)
     if (opt != NULL)
       set_option(opt->name, "5", opt->type);
   }
-  
+
   sb_globals.validate = sb_get_value_flag("validate");
+
+  sb_globals.break_workers_init = sb_get_value_flag("break_workers_init");
 
   if (sb_rand_init())
   {

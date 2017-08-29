@@ -1,0 +1,9 @@
+This branch is created to test tokudb file operations.
+
+The initial server paramenters:
+
+LD_PRELOAD="/home/vlesin/r/57-psc/lib/libHotBackup.so /usr/lib/x86_64-linux-gnu/libjemalloc.so.1" gdb --args bin/mysqld-debug --no-defaults --basedir=/home/vlesin/r/57-psc --plugin-dir=/home/vlesin/r/57-psc/lib/mysql/plugin --datadir=/data/flash/vlesin/data/ --plugin-load=tokudb=ha_tokudb.so --plugin-load-add=tokudb_backup.so --socket=/tmp/mysqld.vlesin.sock --port=33306 --table-open-cache=16000 --table_open_cache_instances=16 --metadata_locks_hash_instances=256 --tokudb_commit_sync=0 --tokudb_block_size=8M --tokudb_read_block_size=1M --tokudb_read_buf_size=1M --tokudb_loader_memory_size=512M --tokudb_fsync_log_period=10000 --tokudb_cache_size=10G  --tokudb_directio=1 --tokudb_support_xa=0 --tokudb_checkpointing_period=120  --max_prepared_stmt_count=10000000 --innodb_use_native_aio=0 --gdb
+
+Sysbench parameters(use 'prepare' instead of 'run' to create and fill tables):
+
+LD_LIBRARY_PATH=$PSC_DIR/lib src/sysbench ./src/lua/oltp_read_write_fops.lua --skip_trx=1 --range-selects=1 --mysql-db=test --mysql-user=root --mysql-password="" --mysql-socket=/tmp/mysqld.vlesin.sock --mysql-storage-engine=TokuDB --mysql-ignore-errors=all --threads=48 --tables=1000 --auto_inc=off --skip_trx=on --table_size=100000 --report-interval=1 --time=86400 --break-workers-init=off --fops_max_period=30 --toku_hotbackup_dir=/data/flash/vlesin/backup run
